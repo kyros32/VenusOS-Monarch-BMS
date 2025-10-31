@@ -2,10 +2,16 @@
 import os
 import time
 import struct
-import sys  # Added for sys.stderr
+import sys  # <-- ADD THIS
+
+# --- ADD THESE TWO LINES TO FIX THE IMPORT PATH ---
+lib_path = '/opt/victronenergy/venus/velib_python'
+sys.path.insert(1, lib_path)
+# --------------------------------------------------
+
 from gi.repository import GLib
 from pymodbus.client.sync import ModbusTcpClient
-from vedbus import VeDbusService
+from vedbus import VeDbusService  # <-- This will now work
 from dbus.mainloop.glib import DBusGMainLoop
 
 # ----------------------------
@@ -43,7 +49,7 @@ class DbusMonarchBms:
         """Create and initialize the dbus service with mandatory fields."""
         # --- Mandatory paths for battery service ---
         self.service.add_path("/Mgmt/ProcessName", __file__)
-        self.service.add_path("/Mgmt/ProcessVersion", "1.2")
+        self.service.add_path("/Mgmt/ProcessVersion", "1.3 - Path Fix")
         self.service.add_path("/Mgmt/Connection", f"ModbusTCP {BMS_IP}")
 
         self.service.add_path("/DeviceInstance", 0)
