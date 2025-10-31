@@ -1,9 +1,3 @@
-Here is the updated content for your `README.md` file.
-
-This version changes the installation process to use the persistent `/data` partition, ensuring your script and its auto-start configuration will survive Victron firmware updates.
-
------
-
 # 🚀 Deploying Monarch BMS Modbus to DBus Bridge on Victron Venus OS
 
 This script reads Modbus values from a Monarch BMS over TCP and publishes them to DBus as a custom battery service:
