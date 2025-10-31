@@ -26,6 +26,8 @@ mkdir -p /data/monarch_bms
 wget -O /data/monarch_bms/monarch_bms.py https://github.com/kyros32/DBus_client_monarch/monarch_bms.py
 ```
 
+*(Remember to update this file with the final version containing the `sys.path` fix).*
+
 **3. Make the script executable**
 
 ```bash
@@ -40,12 +42,18 @@ nano /data/rc.local
 ```
 
 **5. Add the following lines**
-Make sure to reference the script's new location in `/data`.
+This will re-create the symbolic link on every boot, then run the script from the location Venus OS expects.
 
 ```bash
 #!/bin/sh
 # Start Monarch BMS driver
-/usr/bin/python3 /data/monarch_bms/monarch_bms.py > /dev/null 2>&1 &
+
+# Create symbolic link from the non-persistent location to our persistent script
+# (The /opt/victronenergy/dbus-modbus-client/ directory is assumed to exist)
+ln -sfn /data/monarch_bms/monarch_bms.py /opt/victronenergy/dbus-modbus-client/monarch_bms.py
+
+# Run the script from the symlink location
+/usr/bin/python3 /opt/victronenergy/dbus-modbus-client/monarch_bms.py > /dev/null 2>&1 &
 exit 0
 ```
 
@@ -66,10 +74,16 @@ reboot
 
 ## 🧪 Manual Testing (Optional)
 
-If you want to test the script before enabling auto-start, you can run it directly from its new location. **Make sure to stop it (Ctrl+C) before rebooting.**
+If you want to test before rebooting, you must **first run the symlink command** from `rc.local`:
 
 ```bash
-/usr/bin/python3 /data/monarch_bms/monarch_bms.py
+ln -sfn /data/monarch_bms/monarch_bms.py /opt/victronenergy/dbus-modbus-client/monarch_bms.py
+```
+
+Now you can test by running from the **`/opt` path**:
+
+```bash
+/usr/bin/python3 /opt/victronenergy/dbus-modbus-client/monarch_bms.py
 ```
 
 You should see the dbus service appear on `dbus-spy`.
@@ -78,10 +92,10 @@ You should see the dbus service appear on `dbus-spy`.
 
 ## ✅ Verification (After Reboot)
 
-Check that the process is running in the background. Note the new path.
+Check that the process is running. Note the path will be the one in `/opt`.
 
 ```bash
-pgrep -f /data/monarch_bms/monarch_bms.py
+pgrep -f /opt/victronenergy/dbus-modbus-client/monarch_bms.py
 ```
 
 Check if the dbus service is registered:
@@ -96,8 +110,8 @@ dbus-spy
 
 ## 🛑 Stopping the Service
 
-This will stop the currently running process. It will restart automatically on the next reboot (unless you remove it from `/data/rc.local`).
+This will stop the currently running process. It will restart automatically on the next reboot.
 
 ```bash
-pkill -f /data/monarch_bms/monarch_bms.py
+pkill -f /opt/victronenergy/dbus-modbus-client/monarch_bms.py
 ```
