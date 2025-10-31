@@ -43,7 +43,7 @@ class DbusMonarchBms:
         """Create and initialize the dbus service with mandatory fields."""
         # --- Mandatory paths for battery service ---
         self.service.add_path("/Mgmt/ProcessName", __file__)
-        self.service.add_path("/Mgmt/ProcessVersion", "1.2 Refactored (print)")
+        self.service.add_path("/Mgmt/ProcessVersion", "1.2")
         self.service.add_path("/Mgmt/Connection", f"ModbusTCP {BMS_IP}")
 
         self.service.add_path("/DeviceInstance", 0)
