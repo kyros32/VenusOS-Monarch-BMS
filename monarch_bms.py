@@ -38,7 +38,8 @@ INFO_NUM_REGISTERS = 30
 # Service Settings
 # ----------------------------
 DBUS_SERVICE_NAME = "com.victronenergy.battery.monarch"
-UPDATE_INTERVAL = 5  # seconds
+DEVICE_INSTANCE = 41  # Configurable DeviceInstance
+UPDATE_INTERVAL = 5   # seconds
 
 class DbusMonarchBms:
     def __init__(self):
@@ -61,11 +62,12 @@ class DbusMonarchBms:
         """Create and initialize the dbus service with all important paths."""
         # --- Management Paths ---
         self.service.add_path("/Mgmt/ProcessName", __file__)
-        self.service.add_path("/Mgmt/ProcessVersion", "2.0 - Final Refactor")
+        self.service.add_path("/Mgmt/ProcessVersion", "2.1 - Configurable Instance")
         self.service.add_path("/Mgmt/Connection", f"ModbusTCP {BMS_IP}")
 
         # --- Device Info ---
-        self.service.add_path("/DeviceInstance", 0)
+        # Use the configurable DEVICE_INSTANCE variable here
+        self.service.add_path("/DeviceInstance", DEVICE_INSTANCE)
         self.service.add_path("/ProductId", 0xB004)   # generic battery
         self.service.add_path("/ProductName", "Monarch BMS")
         self.service.add_path("/CustomName", "Monarch Battery")
