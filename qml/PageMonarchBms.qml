@@ -42,25 +42,29 @@ MbPage {
         MbItemValue { description: qsTr("Last Error"); item: VBusItem { bind: svc + "/Status/LastError" } }
 
         // --- Battery line ---
-        MbItemValue { description: qsTr("Voltage"); item: VBusItem { bind: svc + "/Dc/0/Voltage" } }
-        MbItemValue { description: qsTr("Current"); item: VBusItem { bind: svc + "/Dc/0/Current" } }
-        MbItemValue { description: qsTr("Power"); item: VBusItem { bind: svc + "/Dc/0/Power" } }
+        MbItemValue { description: qsTr("Voltage (V)"); item: VBusItem { bind: svc + "/Dc/0/Voltage" } }
+        MbItemValue { description: qsTr("Current (A)"); item: VBusItem { bind: svc + "/Dc/0/Current" } }
+        MbItemValue { description: qsTr("Power (W)"); item: VBusItem { bind: svc + "/Dc/0/Power" } }
         MbItemValue { description: qsTr("SOC"); item: VBusItem { bind: svc + "/Soc" } }
         MbItemValue { description: qsTr("Temperature"); item: VBusItem { bind: svc + "/Dc/0/Temperature" } }
         MbItemValue { description: qsTr("Time to Go"); item: VBusItem { bind: svc + "/TimeToGo" } }
 
         // --- Limits ---
-        MbItemValue { description: qsTr("Max Chg Curr"); item: VBusItem { bind: svc + "/Info/MaxChargeCurrent" } }
-        MbItemValue { description: qsTr("Max Dchg Curr"); item: VBusItem { bind: svc + "/Info/MaxDischargeCurrent" } }
+        MbItemValue { description: qsTr("Max Chg Curr (A)"); item: VBusItem { bind: svc + "/Info/MaxChargeCurrent" } }
+        MbItemValue { description: qsTr("Max Dchg Curr (A)"); item: VBusItem { bind: svc + "/Info/MaxDischargeCurrent" } }
         MbItemValue { description: qsTr("Max Chg V"); item: VBusItem { bind: svc + "/Info/MaxChargeVoltage" } }
         MbItemValue { description: qsTr("Low V"); item: VBusItem { bind: svc + "/Info/BatteryLowVoltage" } }
         MbItemValue { description: qsTr("Chg Request"); item: VBusItem { bind: svc + "/Info/ChargeRequest" } }
 
-        // --- Device info ---
+        // --- Details ---
+        MbItemValue { description: qsTr("Nr. of cells"); item: VBusItem { bind: svc + "/System/NrOfCellsPerBattery" } }
+        MbItemValue { description: qsTr("Installed capacity (Ah)"); item: VBusItem { bind: svc + "/Info/InstalledCapacity" } }
+        MbItemValue { description: qsTr("Available capacity (Ah)"); item: VBusItem { bind: svc + "/Info/AvailableCapacity" } }
+        MbItemValue { description: qsTr("State of health (%)"); item: VBusItem { bind: svc + "/Soh" } }
+        MbItemValue { description: qsTr("System switch"); item: VBusItem { bind: svc + "/System/Switch" } }
         MbItemValue { description: qsTr("Serial"); item: VBusItem { bind: svc + "/Serial" } }
         MbItemValue { description: qsTr("HW Ver"); item: VBusItem { bind: svc + "/HardwareVersion" } }
         MbItemValue { description: qsTr("FW Ver"); item: VBusItem { bind: svc + "/FirmwareVersion" } }
-        MbItemValue { description: qsTr("Cells"); item: VBusItem { bind: svc + "/System/NrOfCellsPerBattery" } }
 
         // --- Alarms ---
         MbItemValue { description: qsTr("Alarm State"); item: VBusItem { bind: svc + "/Alarms/State" } }
@@ -70,5 +74,9 @@ MbPage {
         MbItemValue { description: qsTr("Low SOC Alm"); item: VBusItem { bind: svc + "/Alarms/LowSoc" } }
         MbItemValue { description: qsTr("High T Alm"); item: VBusItem { bind: svc + "/Alarms/HighTemperature" } }
         MbItemValue { description: qsTr("Low T Alm"); item: VBusItem { bind: svc + "/Alarms/LowTemperature" } }
+        MbItemValue { description: qsTr("Low Chg T Alm"); item: VBusItem { bind: svc + "/Alarms/LowChargeTemperature" } }
+        MbItemValue { description: qsTr("High Chg T Alm"); item: VBusItem { bind: svc + "/Alarms/HighChargeTemperature" } }
+        MbItemValue { description: qsTr("Cell Imbalance Alm"); item: VBusItem { bind: svc + "/Alarms/CellImbalance" } }
+        MbItemValue { description: qsTr("Internal Failure Alm"); item: VBusItem { bind: svc + "/Alarms/InternalFailure" } }
     }
 }

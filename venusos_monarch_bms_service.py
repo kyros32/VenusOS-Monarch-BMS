@@ -30,10 +30,10 @@ UPDATE_INTERVAL_SECONDS = 2
 DEFAULT_DEVICE_INSTANCE = 41
 
 # Chunk size for Modbus reads. Monarch BMS may close connection after each response;
-# smaller chunks (e.g. 10) can succeed where a full 37-register read fails.
+# smaller chunks (e.g. 10) can succeed where a full block read fails.
 REGISTER_CHUNK_SIZE = 10
 REGISTER_BLOCK_START = 0  # 0-based
-REGISTER_BLOCK_COUNT = 37
+REGISTER_BLOCK_COUNT = 48
 
 # Per-field Modbus register map (address=1-based Modbus register, type=uint16|uint32|float32).
 # Alarm values: 0=OK, 1=Warning, 2=Alarm. Adjust addresses to match your Monarch BMS protocol.
@@ -57,6 +57,14 @@ REGISTER_MAP = {
     "/Alarms/LowSoc": (35, "uint16"),
     "/Alarms/HighTemperature": (36, "uint16"),
     "/Alarms/LowTemperature": (37, "uint16"),
+    "/System/Switch": (38, "uint16"),
+    "/Soh": (39, "float32"),
+    "/Info/InstalledCapacity": (41, "float32"),
+    "/Info/AvailableCapacity": (43, "float32"),
+    "/Alarms/LowChargeTemperature": (45, "uint16"),
+    "/Alarms/HighChargeTemperature": (46, "uint16"),
+    "/Alarms/CellImbalance": (47, "uint16"),
+    "/Alarms/InternalFailure": (48, "uint16"),
 }
 
 LOG = logging.getLogger("venusos-monarch-bms")
@@ -163,8 +171,13 @@ class VenusOsMonarchBmsService:
         self._service.add_path("/Info/MaxChargeVoltage", None)
         self._service.add_path("/Info/BatteryLowVoltage", None)
         self._service.add_path("/Info/ChargeRequest", 0)
+        self._service.add_path("/Capacity", None)
+        self._service.add_path("/Info/InstalledCapacity", None)
+        self._service.add_path("/Info/AvailableCapacity", None)
+        self._service.add_path("/Soh", None)
         self._service.add_path("/TimeToGo", None)
         self._service.add_path("/System/NrOfCellsPerBattery", None)
+        self._service.add_path("/System/Switch", 1)
         self._service.add_path("/System/NrOfModulesOnline", 1)
         self._service.add_path("/System/NrOfModulesOffline", 0)
         self._service.add_path("/System/NrOfModulesBlockingCharge", 0)
@@ -179,6 +192,10 @@ class VenusOsMonarchBmsService:
         self._service.add_path("/Alarms/LowSoc", 0)
         self._service.add_path("/Alarms/HighTemperature", 0)
         self._service.add_path("/Alarms/LowTemperature", 0)
+        self._service.add_path("/Alarms/LowChargeTemperature", 0)
+        self._service.add_path("/Alarms/HighChargeTemperature", 0)
+        self._service.add_path("/Alarms/CellImbalance", 0)
+        self._service.add_path("/Alarms/InternalFailure", 0)
         self._service.add_path("/Alarms/State", 0)
         self._service.add_path("/Alarms/Active", "")
 
@@ -291,6 +308,8 @@ class VenusOsMonarchBmsService:
                         data[path] = str(val)
                     elif path.startswith("/Alarms/"):
                         data[path] = int(val) & 0xFFFF
+                    elif path == "/System/Switch":
+                        data[path] = 1 if int(val) else 0
                     else:
                         data[path] = int(val)
                 else:
@@ -301,9 +320,13 @@ class VenusOsMonarchBmsService:
                         continue
                     if path == "/Soc" and not (0.0 <= v <= 100.0):
                         continue
+                    if path == "/Soh" and not (0.0 <= v <= 100.0):
+                        continue
                     if path == "/Dc/0/Temperature" and not (-50.0 <= v <= 100.0):
                         continue
                     if path == "/TimeToGo" and v < 0:
+                        continue
+                    if path in ("/Info/InstalledCapacity", "/Info/AvailableCapacity") and not (0.0 <= v <= 20000.0):
                         continue
                     data[path] = v
 
@@ -328,6 +351,9 @@ class VenusOsMonarchBmsService:
             i = self._service["/Dc/0/Current"]
             if v is not None and i is not None:
                 self._service["/Dc/0/Power"] = round(v * i, 2)
+            cap = self._service["/Info/AvailableCapacity"] or self._service["/Info/InstalledCapacity"]
+            if cap is not None:
+                self._service["/Capacity"] = round(float(cap), 2)
 
             self._service["/Connected"] = 1
             charge_request = int(self._service["/Info/ChargeRequest"] or 0)
@@ -341,6 +367,10 @@ class VenusOsMonarchBmsService:
                 "/Alarms/LowSoc",
                 "/Alarms/HighTemperature",
                 "/Alarms/LowTemperature",
+                "/Alarms/LowChargeTemperature",
+                "/Alarms/HighChargeTemperature",
+                "/Alarms/CellImbalance",
+                "/Alarms/InternalFailure",
             ]
             active_alarms = []
             max_alarm_level = 0

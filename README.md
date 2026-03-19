@@ -65,6 +65,14 @@ The service runs as a runit daemon, polls the BMS via Modbus TCP, and publishes 
 | `/Alarms/LowSoc` | 35 | uint16 | 1 | 0=OK, 1=Warning, 2=Alarm |
 | `/Alarms/HighTemperature` | 36 | uint16 | 1 | 0=OK, 1=Warning, 2=Alarm |
 | `/Alarms/LowTemperature` | 37 | uint16 | 1 | 0=OK, 1=Warning, 2=Alarm |
+| `/System/Switch` | 38 | uint16 | 1 | System switch (0=off, 1=on) |
+| `/Soh` | 39 | float32 | 2 | State of health (%) |
+| `/Info/InstalledCapacity` | 41 | float32 | 2 | Installed capacity (Ah) |
+| `/Info/AvailableCapacity` | 43 | float32 | 2 | Available capacity (Ah) |
+| `/Alarms/LowChargeTemperature` | 45 | uint16 | 1 | 0=OK, 1=Warning, 2=Alarm |
+| `/Alarms/HighChargeTemperature` | 46 | uint16 | 1 | 0=OK, 1=Warning, 2=Alarm |
+| `/Alarms/CellImbalance` | 47 | uint16 | 1 | 0=OK, 1=Warning, 2=Alarm |
+| `/Alarms/InternalFailure` | 48 | uint16 | 1 | 0=OK, 1=Warning, 2=Alarm |
 
 ### Modbus Details
 
@@ -73,13 +81,14 @@ The service runs as a runit daemon, polls the BMS via Modbus TCP, and publishes 
 - **Register numbering:** 1-based (e.g. reg 1 = first input register)
 - **Float32:** Two consecutive 16-bit registers, high word first
 
-**Address adjustment:** Edit `REGISTER_MAP` in `venusos_monarch_bms_service.py` to match your Monarch BMS protocol. Registers 29–37 are placeholders; verify against your BMS documentation.
+**Address adjustment:** Edit `REGISTER_MAP` in `venusos_monarch_bms_service.py` to match your Monarch BMS protocol. Registers 38–48 (system switch, SOH, capacities, extra alarms) may need adjustment per your BMS documentation.
 
 ### Derived / Runtime Paths (Not from Modbus)
 
 | DBus Path | Source |
 |-----------|--------|
 | `/Dc/0/Power` | Calculated: Voltage × Current |
+| `/Capacity` | From `/Info/AvailableCapacity` or `/Info/InstalledCapacity` |
 | `/Alarms/State` | Max of all alarm levels |
 | `/Alarms/Active` | Comma-separated list of active alarm names |
 | `/Connected` | 1 when Modbus read succeeds |
@@ -170,10 +179,10 @@ The Monarch BMS page shows:
 
 - **Settings:** Enabled (toggle), IP address (MbEditBoxIp), Port and Unit ID (MbSpinBox)
 - **Status:** Status, Connected, Last Error
-- **Battery line:** Voltage, Current, Power, SOC, Temperature, Time to Go
-- **Limits:** Max charge/discharge current, max charge voltage, low voltage, charge request
-- **Device info:** Serial, HW version, FW version, cell count
-- **Alarms:** Alarm state, active alarms, individual alarm flags
+- **Battery line:** Voltage (V), Current (A), Power (W), SOC, Temperature, Time to Go
+- **Limits:** Max charge/discharge current (A), max charge voltage, low voltage, charge request
+- **Details:** Nr. of cells, installed capacity (Ah), available capacity (Ah), state of health (%), system switch, Serial, HW/FW version
+- **Alarms:** Alarm state, active alarms, Low/High voltage, Low/High SOC, High/Low temp, Low/High charge temp, Cell imbalance, Internal failure
 
 ---
 
@@ -197,7 +206,7 @@ The Monarch BMS page shows:
 
 ### Wrong values
 
-- **Adjust `REGISTER_MAP`** in `venusos_monarch_bms_service.py` to match your Monarch BMS protocol. Registers 29–37 (temperature, alarms) are placeholders.
+- **Adjust `REGISTER_MAP`** in `venusos_monarch_bms_service.py` to match your Monarch BMS protocol. Registers 38–48 (system switch, SOH, capacities, extra alarms) may need adjustment.
 
 ### DBus not visible
 
@@ -219,6 +228,7 @@ Stop with Ctrl+C.
 
 ## Version History
 
+- **v1.2.0** – Nr. of cells, installed/available capacity, SOH, system switch; units (V, A, W); alarms: Low/High charge temp, Cell imbalance, Internal failure; extended register map (48 registers)
 - **v1.1.3** – Block read for all Modbus registers; fixes "Connection unexpectedly closed" when BMS closes after each request
 - **v1.1.2** – Editable IP (MbEditBoxIp), Port and Unit ID (MbSpinBox)
 - **v1.1.0** – Full register map (temp, alarms, TimeToGo, cells), compact QML, detailed README
