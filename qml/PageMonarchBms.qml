@@ -11,7 +11,7 @@ MbPage {
     model: VisibleItemModel {
         // --- Settings ---
         MbSwitch { name: qsTr("Enabled"); bind: setSvc + "/Enabled" }
-        MbItemEdit { description: qsTr("IP"); item: VBusItem { bind: setSvc + "/IpAddress" } }
+        MbItemValue { description: qsTr("IP"); item: VBusItem { bind: setSvc + "/IpAddress" } }
         MbItemNumeric { description: qsTr("Port"); bind: setSvc + "/Port"; decimals: 0; unit: ""; min: 1; max: 65535 }
         MbItemNumeric { description: qsTr("Unit ID"); bind: setSvc + "/UnitId"; decimals: 0; unit: ""; min: 0; max: 255 }
 

@@ -167,7 +167,7 @@ VenusOS-Monarch-BMS/
 
 The Monarch BMS page shows:
 
-- **Settings:** Enabled, IP, Port, Unit ID (editable)
+- **Settings:** Enabled, IP (read-only), Port, Unit ID (editable)
 - **Status:** Status, Connected, Last Error
 - **Battery line:** Voltage, Current, Power, SOC, Temperature, Time to Go
 - **Limits:** Max charge/discharge current, max charge voltage, low voltage, charge request
@@ -183,9 +183,9 @@ The Monarch BMS page shows:
 - **Check runit:** `sv status dbus-monarch-bms` (or `VenusOS-Monarch-BMS` depending on SetupHelper)
 - **Logs:** `tail -f /var/log/dbus-monarch-bms/current` or `/service/dbus-monarch-bMS/log/main/current`
 
-### Blank QML page
+### Blank QML page / "MbItemEdit is not a type"
 
-- If `MbItemEdit` is not available in your Venus build, replace it with `MbItemValue` for the IP field in `PageMonarchBms.qml`. You can then change the IP via `com.victronenergy.settings/Settings/VenusOsMonarchBms/IpAddress` (e.g. with `dbus-send` or a DBus tool).
+- Venus does not provide `MbItemEdit`. The IP field uses `MbItemValue` (read-only). To change the IP, write to `com.victronenergy.settings/Settings/VenusOsMonarchBms/IpAddress` via DBus, or edit the settings XML on the device.
 
 ### No data / Connection failed
 
