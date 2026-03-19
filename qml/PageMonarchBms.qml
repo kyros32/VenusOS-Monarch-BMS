@@ -6,117 +6,48 @@ MbPage {
     title: qsTr("Monarch BMS")
 
     property string svc: "com.victronenergy.battery.monarch"
-
-    // Pre-declare bindings for stability (mirrors SolarEdge example style).
-    // Enable toggle binds to Settings service (writable); battery service mirrors it read-only.
-    VBusItem { id: enabledItem; bind: "com.victronenergy.settings/Settings/VenusOsMonarchBms/Enabled" }
-    VBusItem { id: statusItem; bind: svc + "/Status" }
-    VBusItem { id: lastErrorItem; bind: svc + "/Status/LastError" }
-    VBusItem { id: connectedItem; bind: svc + "/Connected" }
-    VBusItem { id: registersItem; bind: svc + "/Status/Registers" }
-
-    VBusItem { id: ipItem; bind: svc + "/Settings/IpAddress" }
-    VBusItem { id: portItem; bind: svc + "/Settings/Port" }
-    VBusItem { id: unitIdItem; bind: svc + "/Settings/UnitId" }
-
-    VBusItem { id: voltageItem; bind: svc + "/Dc/0/Voltage" }
-    VBusItem { id: currentItem; bind: svc + "/Dc/0/Current" }
-    VBusItem { id: powerItem; bind: svc + "/Dc/0/Power" }
-    VBusItem { id: socItem; bind: svc + "/Soc" }
-
-    VBusItem { id: alarmStateItem; bind: svc + "/Alarms/State" }
-    VBusItem { id: activeAlarmsItem; bind: svc + "/Alarms/Active" }
-
-    VBusItem { id: maxChargeCurrentItem; bind: svc + "/Info/MaxChargeCurrent" }
-    VBusItem { id: maxDischargeCurrentItem; bind: svc + "/Info/MaxDischargeCurrent" }
-    VBusItem { id: maxChargeVoltageItem; bind: svc + "/Info/MaxChargeVoltage" }
+    property string setSvc: "com.victronenergy.settings/Settings/VenusOsMonarchBms"
 
     model: VisibleItemModel {
-        MbItemValue {
-            description: qsTr("System Status")
-            item: statusItem
-        }
+        // --- Settings ---
+        MbSwitch { name: qsTr("Enabled"); bind: setSvc + "/Enabled" }
+        MbItemEdit { description: qsTr("IP"); item: VBusItem { bind: setSvc + "/IpAddress" } }
+        MbItemNumeric { description: qsTr("Port"); bind: setSvc + "/Port"; decimals: 0; unit: ""; min: 1; max: 65535 }
+        MbItemNumeric { description: qsTr("Unit ID"); bind: setSvc + "/UnitId"; decimals: 0; unit: ""; min: 0; max: 255 }
 
-        MbItemValue {
-            description: qsTr("Connected")
-            item: connectedItem
-        }
+        // --- Status ---
+        MbItemValue { description: qsTr("Status"); item: VBusItem { bind: svc + "/Status" } }
+        MbItemValue { description: qsTr("Connected"); item: VBusItem { bind: svc + "/Connected" } }
+        MbItemValue { description: qsTr("Last Error"); item: VBusItem { bind: svc + "/Status/LastError" } }
 
-        MbItemValue {
-            description: qsTr("Last Error")
-            item: lastErrorItem
-        }
+        // --- Battery line ---
+        MbItemValue { description: qsTr("Voltage"); item: VBusItem { bind: svc + "/Dc/0/Voltage" } }
+        MbItemValue { description: qsTr("Current"); item: VBusItem { bind: svc + "/Dc/0/Current" } }
+        MbItemValue { description: qsTr("Power"); item: VBusItem { bind: svc + "/Dc/0/Power" } }
+        MbItemValue { description: qsTr("SOC"); item: VBusItem { bind: svc + "/Soc" } }
+        MbItemValue { description: qsTr("Temperature"); item: VBusItem { bind: svc + "/Dc/0/Temperature" } }
+        MbItemValue { description: qsTr("Time to Go"); item: VBusItem { bind: svc + "/TimeToGo" } }
 
-        MbItemValue {
-            description: qsTr("Voltage")
-            item: voltageItem
-        }
+        // --- Limits ---
+        MbItemValue { description: qsTr("Max Chg Curr"); item: VBusItem { bind: svc + "/Info/MaxChargeCurrent" } }
+        MbItemValue { description: qsTr("Max Dchg Curr"); item: VBusItem { bind: svc + "/Info/MaxDischargeCurrent" } }
+        MbItemValue { description: qsTr("Max Chg V"); item: VBusItem { bind: svc + "/Info/MaxChargeVoltage" } }
+        MbItemValue { description: qsTr("Low V"); item: VBusItem { bind: svc + "/Info/BatteryLowVoltage" } }
+        MbItemValue { description: qsTr("Chg Request"); item: VBusItem { bind: svc + "/Info/ChargeRequest" } }
 
-        MbItemValue {
-            description: qsTr("Current")
-            item: currentItem
-        }
+        // --- Device info ---
+        MbItemValue { description: qsTr("Serial"); item: VBusItem { bind: svc + "/Serial" } }
+        MbItemValue { description: qsTr("HW Ver"); item: VBusItem { bind: svc + "/HardwareVersion" } }
+        MbItemValue { description: qsTr("FW Ver"); item: VBusItem { bind: svc + "/FirmwareVersion" } }
+        MbItemValue { description: qsTr("Cells"); item: VBusItem { bind: svc + "/System/NrOfCellsPerBattery" } }
 
-        MbItemValue {
-            description: qsTr("Power")
-            item: powerItem
-        }
-
-        MbItemValue {
-            description: qsTr("State of Charge")
-            item: socItem
-        }
-
-        MbItemValue {
-            description: qsTr("Alarm State")
-            item: alarmStateItem
-        }
-
-        MbItemValue {
-            description: qsTr("Active Alarms")
-            item: activeAlarmsItem
-        }
-
-        MbItemValue {
-            description: qsTr("Max Charge Current")
-            item: maxChargeCurrentItem
-        }
-
-        MbItemValue {
-            description: qsTr("Max Discharge Current")
-            item: maxDischargeCurrentItem
-        }
-
-        MbItemValue {
-            description: qsTr("Max Charge Voltage")
-            item: maxChargeVoltageItem
-        }
-
-        MbSwitch {
-            name: qsTr("Enable Monarch BMS Service")
-            bind: "com.victronenergy.settings/Settings/VenusOsMonarchBms/Enabled"
-        }
-
-        // For now these are read-only to avoid UI widget type issues.
-        // Once the page loads reliably, we can switch to editable components.
-        MbItemValue {
-            description: qsTr("BMS IP Address")
-            item: ipItem
-        }
-
-        MbItemValue {
-            description: qsTr("BMS Port")
-            item: portItem
-        }
-
-        MbItemValue {
-            description: qsTr("Device/Unit ID")
-            item: unitIdItem
-        }
-
-        MbItemValue {
-            description: qsTr("Modbus Register Block")
-            item: registersItem
-        }
+        // --- Alarms ---
+        MbItemValue { description: qsTr("Alarm State"); item: VBusItem { bind: svc + "/Alarms/State" } }
+        MbItemValue { description: qsTr("Active"); item: VBusItem { bind: svc + "/Alarms/Active" } }
+        MbItemValue { description: qsTr("Low V Alm"); item: VBusItem { bind: svc + "/Alarms/LowVoltage" } }
+        MbItemValue { description: qsTr("High V Alm"); item: VBusItem { bind: svc + "/Alarms/HighVoltage" } }
+        MbItemValue { description: qsTr("Low SOC Alm"); item: VBusItem { bind: svc + "/Alarms/LowSoc" } }
+        MbItemValue { description: qsTr("High T Alm"); item: VBusItem { bind: svc + "/Alarms/HighTemperature" } }
+        MbItemValue { description: qsTr("Low T Alm"); item: VBusItem { bind: svc + "/Alarms/LowTemperature" } }
     }
 }

@@ -28,19 +28,43 @@ PRODUCT_NAME = "VenusOS Monarch BMS"
 PRODUCT_ID = 0xB090
 UPDATE_INTERVAL_SECONDS = 2
 DEFAULT_DEVICE_INSTANCE = 41
-REGISTER_BLOCK_START = 1
-REGISTER_BLOCK_COUNT = 30
+
+# Per-field Modbus register map (address=1-based Modbus register, type=uint16|uint32|float32).
+# Alarm values: 0=OK, 1=Warning, 2=Alarm. Adjust addresses to match your Monarch BMS protocol.
+REGISTER_MAP = {
+    "/Serial": (1, "uint32"),
+    "/HardwareVersion": (5, "uint32"),
+    "/FirmwareVersion": (7, "uint16"),
+    "/System/NrOfCellsPerBattery": (9, "uint16"),
+    "/Dc/0/Voltage": (13, "float32"),
+    "/Dc/0/Current": (15, "float32"),
+    "/Soc": (17, "float32"),
+    "/Info/MaxChargeCurrent": (19, "float32"),
+    "/Info/MaxDischargeCurrent": (21, "float32"),
+    "/Info/MaxChargeVoltage": (23, "float32"),
+    "/Info/BatteryLowVoltage": (25, "float32"),
+    "/Info/ChargeRequest": (27, "uint16"),
+    "/Dc/0/Temperature": (29, "float32"),
+    "/TimeToGo": (31, "float32"),
+    "/Alarms/LowVoltage": (33, "uint16"),
+    "/Alarms/HighVoltage": (34, "uint16"),
+    "/Alarms/LowSoc": (35, "uint16"),
+    "/Alarms/HighTemperature": (36, "uint16"),
+    "/Alarms/LowTemperature": (37, "uint16"),
+}
 
 LOG = logging.getLogger("venusos-monarch-bms")
 
 
-def _float_be(regs, index):
-    raw = struct.pack(">HH", regs[index], regs[index + 1])
-    return struct.unpack(">f", raw)[0]
-
-
-def _uint32_be(regs, index):
-    return (regs[index] << 16) | regs[index + 1]
+def _decode_regs(regs, dtype):
+    if dtype == "uint16":
+        return regs[0]
+    if dtype == "uint32":
+        return (regs[0] << 16) | regs[1]
+    if dtype == "float32":
+        raw = struct.pack(">HH", regs[0], regs[1])
+        return struct.unpack(">f", raw)[0]
+    return None
 
 
 class VenusOsMonarchBmsService:
@@ -79,7 +103,7 @@ class VenusOsMonarchBmsService:
 
     def _setup_paths(self):
         self._service.add_path("/Mgmt/ProcessName", __file__)
-        self._service.add_path("/Mgmt/ProcessVersion", "1.1.0")
+        self._service.add_path("/Mgmt/ProcessVersion", "1.2.0")
         self._service.add_path("/Mgmt/Connection", "ModbusTCP")
         self._service.add_path("/DeviceInstance", int(self._settings["device_instance"]))
         self._service.add_path("/ProductId", PRODUCT_ID)
@@ -121,7 +145,6 @@ class VenusOsMonarchBmsService:
         self._service.add_path("/Status", "Starting")
         self._service.add_path("/Status/LastError", "")
         self._service.add_path("/Status/LastUpdateTs", 0)
-        self._service.add_path("/Status/Registers", f"input:{REGISTER_BLOCK_START}+{REGISTER_BLOCK_COUNT}")
 
         # Battery values
         self._service.add_path("/Soc", None)
@@ -197,14 +220,16 @@ class VenusOsMonarchBmsService:
             )
         return self._modbus_client
 
-    def _read_input(self, start, count):
+    def _read_input(self, addr_1based, count):
+        """Read input registers. addr_1based=1 means Modbus register 40001."""
         client = self._get_client()
+        start = addr_1based - 1  # pymodbus uses 0-based
         try:
             return client.read_input_registers(start, count, slave=int(self._settings["unit_id"]))
         except TypeError:
             return client.read_input_registers(start, count, unit=int(self._settings["unit_id"]))
 
-    def _read_data(self) -> Optional[Dict[str, float]]:
+    def _read_data(self) -> Optional[Dict]:
         if int(self._settings["enabled"]) == 0:
             self._set_status(0, "Disabled")
             return None
@@ -217,42 +242,41 @@ class VenusOsMonarchBmsService:
             self._set_status(2, "Connection failed", self._last_error)
             return None
 
-        resp = self._read_input(REGISTER_BLOCK_START, REGISTER_BLOCK_COUNT)
-        if resp.isError():
-            self._last_error = f"Read error: {resp}"
-            self._set_status(2, "Read failed", self._last_error)
+        data = {}
+        for path, (addr, dtype) in REGISTER_MAP.items():
+            count = 2 if dtype in ("uint32", "float32") else 1
+            resp = self._read_input(addr, count)
+            if resp.isError():
+                self._last_error = f"Read error at {path} (reg {addr}): {resp}"
+                self._set_status(2, "Read failed", self._last_error)
+                return None
+            val = _decode_regs(resp.registers, dtype)
+            if val is not None:
+                if dtype in ("uint16", "uint32"):
+                    if path in ("/Serial", "/HardwareVersion", "/FirmwareVersion"):
+                        data[path] = str(val)
+                    elif path.startswith("/Alarms/"):
+                        data[path] = int(val) & 0xFFFF
+                    else:
+                        data[path] = int(val)
+                else:
+                    v = round(float(val), 2)
+                    if path == "/Dc/0/Voltage" and not (0.0 < v < 1000.0):
+                        continue
+                    if path == "/Dc/0/Current" and not (-2000.0 < v < 2000.0):
+                        continue
+                    if path == "/Soc" and not (0.0 <= v <= 100.0):
+                        continue
+                    if path == "/Dc/0/Temperature" and not (-50.0 <= v <= 100.0):
+                        continue
+                    if path == "/TimeToGo" and v < 0:
+                        continue
+                    data[path] = v
+
+        if not data:
+            self._last_error = "No valid data decoded"
+            self._set_status(2, "Decode failed", self._last_error)
             return None
-
-        regs = resp.registers
-        if len(regs) < 28:
-            self._last_error = "Short register response"
-            self._set_status(2, "Invalid response", self._last_error)
-            return None
-
-        data = {
-            "/Serial": str(_uint32_be(regs, 1)),
-            "/HardwareVersion": str(_uint32_be(regs, 5)),
-            "/FirmwareVersion": str(regs[7]),
-            "/Info/MaxChargeCurrent": round(_float_be(regs, 19), 2),
-            "/Info/MaxDischargeCurrent": round(_float_be(regs, 21), 2),
-            "/Info/MaxChargeVoltage": round(_float_be(regs, 23), 2),
-            "/Info/BatteryLowVoltage": round(_float_be(regs, 25), 2),
-            "/Info/ChargeRequest": int(regs[27]) if len(regs) > 27 else 0,
-        }
-
-        try:
-            v = round(_float_be(regs, 13), 2)
-            i = round(_float_be(regs, 15), 2)
-            soc = round(_float_be(regs, 17), 2)
-            if 0.0 < v < 1000.0:
-                data["/Dc/0/Voltage"] = v
-            if -2000.0 < i < 2000.0:
-                data["/Dc/0/Current"] = i
-            if 0.0 <= soc <= 100.0:
-                data["/Soc"] = soc
-        except Exception:
-            pass
-
         return data
 
     def _update(self):
