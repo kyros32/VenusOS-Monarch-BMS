@@ -29,8 +29,9 @@ PRODUCT_ID = 0xB090
 UPDATE_INTERVAL_SECONDS = 2
 DEFAULT_DEVICE_INSTANCE = 41
 
-# Block read: single request for registers 0..36 (1-based 1..37). Monarch BMS may close
-# connection after each request; one block read avoids multiple round-trips.
+# Chunk size for Modbus reads. Monarch BMS may close connection after each response;
+# smaller chunks (e.g. 10) can succeed where a full 37-register read fails.
+REGISTER_CHUNK_SIZE = 10
 REGISTER_BLOCK_START = 0  # 0-based
 REGISTER_BLOCK_COUNT = 37
 
@@ -221,45 +222,56 @@ class VenusOsMonarchBmsService:
             self._modbus_client = ModbusTcpClient(
                 host=str(self._settings["ip_address"]),
                 port=int(self._settings["port"]),
-                timeout=1.0,
+                timeout=3.0,
             )
         return self._modbus_client
+
+    def _read_chunk(self, start: int, count: int, use_holding: bool) -> Optional[list]:
+        """Read a chunk of registers. Reconnects each call (BMS may close after response)."""
+        self._close_client()
+        time.sleep(0.05)  # Brief pause so BMS can reset between connections
+        client = self._get_client()
+        if not client.connect():
+            return None
+        unit_id = int(self._settings["unit_id"])
+        try:
+            if use_holding:
+                try:
+                    resp = client.read_holding_registers(start, count, slave=unit_id)
+                except TypeError:
+                    resp = client.read_holding_registers(start, count=count, slave=unit_id)
+            else:
+                try:
+                    resp = client.read_input_registers(start, count, slave=unit_id)
+                except TypeError:
+                    resp = client.read_input_registers(start, count=count, slave=unit_id)
+        except Exception:
+            return None
+        self._close_client()
+        if resp.isError():
+            return None
+        return resp.registers
 
     def _read_data(self) -> Optional[Dict]:
         if int(self._settings["enabled"]) == 0:
             self._set_status(0, "Disabled")
             return None
 
-        client = self._get_client()
-        if not client.connect():
-            self._last_error = (
-                f"Connect failed {self._settings['ip_address']}:{self._settings['port']}"
-            )
-            self._set_status(2, "Connection failed", self._last_error)
-            return None
+        regs = []
+        # Try input registers first, then holding (some BMS use holding)
+        for use_holding in (False, True):
+            regs = []
+            for start in range(REGISTER_BLOCK_START, REGISTER_BLOCK_COUNT, REGISTER_CHUNK_SIZE):
+                count = min(REGISTER_CHUNK_SIZE, REGISTER_BLOCK_COUNT - start)
+                chunk = self._read_chunk(start, count, use_holding)
+                if chunk is None:
+                    break
+                regs.extend(chunk)
+            if len(regs) >= REGISTER_BLOCK_COUNT:
+                break
 
-        # Single block read: avoids connection drops when BMS closes after each request
-        unit_id = int(self._settings["unit_id"])
-        try:
-            resp = client.read_input_registers(
-                REGISTER_BLOCK_START, REGISTER_BLOCK_COUNT, slave=unit_id
-            )
-        except TypeError:
-            resp = client.read_input_registers(
-                REGISTER_BLOCK_START, count=REGISTER_BLOCK_COUNT, slave=unit_id
-            )
-
-        client.close()
-        self._modbus_client = None
-
-        if resp.isError():
-            self._last_error = f"Read error: {resp}"
-            self._set_status(2, "Read failed", self._last_error)
-            return None
-
-        regs = resp.registers
         if len(regs) < REGISTER_BLOCK_COUNT:
-            self._last_error = f"Short read: got {len(regs)}, need {REGISTER_BLOCK_COUNT}"
+            self._last_error = f"Read failed: got {len(regs)}/{REGISTER_BLOCK_COUNT} registers"
             self._set_status(2, "Read failed", self._last_error)
             return None
 

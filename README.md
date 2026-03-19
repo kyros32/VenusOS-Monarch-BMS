@@ -34,7 +34,7 @@ The service runs as a runit daemon, polls the BMS via Modbus TCP, and publishes 
 ```
 
 - **Read-only:** No Modbus writes; only input registers are read.
-- **Block read:** One Modbus request fetches all registers (1–37) per poll. The Monarch BMS may close the connection after each response; a single block read avoids multiple round-trips.
+- **Chunked reads:** Registers are read in small chunks (10 at a time) with a fresh connection per chunk. The Monarch BMS may close the connection after each response; chunked reads with reconnect can succeed where a full block read fails.
 - **Per-field mapping:** Each DBus path has its own Modbus register(s).
 - **Plausibility checks:** Voltage, current, SOC, temperature are validated before publishing.
 
@@ -193,7 +193,7 @@ The Monarch BMS page shows:
 - Verify BMS IP, port, and unit ID
 - Check network: `ping <BMS_IP>`
 - Run manually: `cd /data/VenusOS-Monarch-BMS && /usr/bin/python3 venusos_monarch_bms_service.py`
-- The service uses a single block read per poll; if the BMS closes the connection after each request, this avoids multiple round-trips.
+- The service uses chunked reads (10 registers per request) with reconnect between chunks; it tries input registers first, then holding registers. If it still fails, try reducing `REGISTER_CHUNK_SIZE` in `venusos_monarch_bms_service.py` (e.g. to 5).
 
 ### Wrong values
 
