@@ -8,13 +8,48 @@ MbPage {
     property string svc: "com.victronenergy.battery.monarch"
 
     model: VisualItemModel {
+        MbItemValue {
+            description: "Battery Line / Voltage"
+            item: VBusItem { bind: svc + "/Dc/0/Voltage" }
+        }
+
+        MbItemValue {
+            description: "Battery Line / Current"
+            item: VBusItem { bind: svc + "/Dc/0/Current" }
+        }
+
+        MbItemValue {
+            description: "Battery Line / Power"
+            item: VBusItem { bind: svc + "/Dc/0/Power" }
+        }
+
+        MbItemValue {
+            description: "Battery Line / SOC"
+            item: VBusItem { bind: svc + "/Soc" }
+        }
+
+        MbItemValue {
+            description: "Battery Line / State"
+            item: VBusItem { bind: svc + "/Status" }
+        }
+
+        MbItemValue {
+            description: "Battery Line / Alarm State"
+            item: VBusItem { bind: svc + "/Alarms/State" }
+        }
+
+        MbItemValue {
+            description: "Battery Line / Active Alarms"
+            item: VBusItem { bind: svc + "/Alarms/Active" }
+        }
+
         MbItemOptions {
-            description: "BMS IP Address"
+            description: "Settings / BMS IP Address"
             bind: VBusItem { bind: svc + "/Settings/IpAddress" }
         }
 
         MbItemNumeric {
-            description: "BMS Port"
+            description: "Settings / BMS Port"
             bind: VBusItem { bind: svc + "/Settings/Port" }
             decimals: 0
             unit: ""
@@ -23,7 +58,7 @@ MbPage {
         }
 
         MbItemNumeric {
-            description: "Device ID"
+            description: "Settings / Device ID"
             bind: VBusItem { bind: svc + "/Settings/UnitId" }
             decimals: 0
             unit: ""
@@ -32,7 +67,7 @@ MbPage {
         }
 
         MbItemOptions {
-            description: "Enabled"
+            description: "Settings / Enabled"
             bind: VBusItem { bind: svc + "/Settings/Enabled" }
             possibleValues: [
                 MbOption { description: "Off"; value: 0 },
@@ -41,48 +76,38 @@ MbPage {
         }
 
         MbItemValue {
-            description: "State"
-            item: VBusItem { bind: svc + "/Status" }
-        }
-
-        MbItemValue {
-            description: "Last Error"
-            item: VBusItem { bind: svc + "/Status/LastError" }
-        }
-
-        MbItemValue {
-            description: "Connected"
-            item: VBusItem { bind: svc + "/Connected" }
-        }
-
-        MbItemValue {
-            description: "Voltage"
-            item: VBusItem { bind: svc + "/Dc/0/Voltage" }
-        }
-
-        MbItemValue {
-            description: "Current"
-            item: VBusItem { bind: svc + "/Dc/0/Current" }
-        }
-
-        MbItemValue {
-            description: "SOC"
-            item: VBusItem { bind: svc + "/Soc" }
-        }
-
-        MbItemValue {
-            description: "Max Charge Current"
+            description: "Parameters / Max Charge Current"
             item: VBusItem { bind: svc + "/Info/MaxChargeCurrent" }
         }
 
         MbItemValue {
-            description: "Max Discharge Current"
+            description: "Parameters / Max Discharge Current"
             item: VBusItem { bind: svc + "/Info/MaxDischargeCurrent" }
         }
 
         MbItemValue {
-            description: "Max Charge Voltage"
+            description: "Parameters / Max Charge Voltage"
             item: VBusItem { bind: svc + "/Info/MaxChargeVoltage" }
+        }
+
+        MbItemValue {
+            description: "Details / State"
+            item: VBusItem { bind: svc + "/Status" }
+        }
+
+        MbItemValue {
+            description: "Details / Last Error"
+            item: VBusItem { bind: svc + "/Status/LastError" }
+        }
+
+        MbItemValue {
+            description: "Details / Connected"
+            item: VBusItem { bind: svc + "/Connected" }
+        }
+
+        MbItemValue {
+            description: "Details / Registers"
+            item: VBusItem { bind: svc + "/Status/Registers" }
         }
     }
 }

@@ -148,6 +148,8 @@ class VenusOsMonarchBmsService:
         self._service.add_path("/Alarms/LowSoc", 0)
         self._service.add_path("/Alarms/HighTemperature", 0)
         self._service.add_path("/Alarms/LowTemperature", 0)
+        self._service.add_path("/Alarms/State", 0)
+        self._service.add_path("/Alarms/Active", "")
 
     def _set_status(self, state: int, msg: str, err: str = ""):
         self._service["/State"] = state
@@ -271,6 +273,26 @@ class VenusOsMonarchBmsService:
             charge_request = int(self._service["/Info/ChargeRequest"] or 0)
             self._service["/Io/AllowToCharge"] = 1 if charge_request else 0
             self._service["/Io/AllowToDischarge"] = 1
+
+            # Build alarm summary expected by UI.
+            alarm_paths = [
+                "/Alarms/LowVoltage",
+                "/Alarms/HighVoltage",
+                "/Alarms/LowSoc",
+                "/Alarms/HighTemperature",
+                "/Alarms/LowTemperature",
+            ]
+            active_alarms = []
+            max_alarm_level = 0
+            for ap in alarm_paths:
+                level = int(self._service[ap] or 0)
+                if level > 0:
+                    active_alarms.append(ap.split("/")[-1])
+                if level > max_alarm_level:
+                    max_alarm_level = level
+            self._service["/Alarms/State"] = max_alarm_level
+            self._service["/Alarms/Active"] = ",".join(active_alarms)
+
             self._last_ok_ts = int(time.time())
             self._service["/Status/LastUpdateTs"] = self._last_ok_ts
             self._set_status(1, "Running")
