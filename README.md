@@ -27,7 +27,7 @@ This rewrite is read-only on Modbus, removes fake live values, and adds bounded 
 
 In kwindrem Package Manager add:
 
-- **Package name:** `venusos-monarch-bms`
+- **Package name:** `VenusOS-Monarch-BMS`
 - **GitHub user:** `<your github user>`
 - **GitHub branch/tag:** `main`
 
@@ -36,12 +36,12 @@ Then **Download** and **Install**.
 ## Manual install (SSH)
 
 ```bash
-rm -rf /data/venusos-monarch-bms
-mkdir -p /data/venusos-monarch-bms
-wget -O - https://github.com/<your user>/venusos-monarch-bms/archive/refs/heads/main.tar.gz | tar -xzf - -C /data/venusos-monarch-bms --strip-components=1
-chmod +x /data/venusos-monarch-bms/setup
-chmod +x /data/venusos-monarch-bms/service/run
-bash -x /data/venusos-monarch-bms/setup install
+rm -rf /data/VenusOS-Monarch-BMS
+mkdir -p /data/VenusOS-Monarch-BMS
+wget -O - https://github.com/<your user>/VenusOS-Monarch-BMS/archive/refs/heads/main.tar.gz | tar -xzf - -C /data/VenusOS-Monarch-BMS --strip-components=1
+chmod +x /data/VenusOS-Monarch-BMS/setup
+chmod +x /data/VenusOS-Monarch-BMS/service/run
+bash -x /data/VenusOS-Monarch-BMS/setup install
 ```
 
 ## QML Settings Page
@@ -70,6 +70,6 @@ The current read target is:
 
 To align with Venus package naming and future maintenance:
 
-- Repository: `venusos-monarch-bms`
+- Repository: `VenusOS-Monarch-BMS`
 - Service package label: `VenusOS-Monarch-BMS`
 - DBus service name: keep `com.victronenergy.battery.monarch` for continuity unless you need a clean break.
