@@ -1,5 +1,6 @@
-import QtQuick 2.0
+import QtQuick 2
 import com.victron.velib 1.0
+import "utils.js" as Utils
 
 MbPage {
     id: root
@@ -9,11 +10,31 @@ MbPage {
     property string setSvc: "com.victronenergy.settings/Settings/VenusOsMonarchBms"
 
     model: VisibleItemModel {
-        // --- Settings ---
-        MbSwitch { name: qsTr("Enabled"); bind: setSvc + "/Enabled" }
-        MbItemValue { description: qsTr("IP"); item: VBusItem { bind: setSvc + "/IpAddress" } }
-        MbItemNumeric { description: qsTr("Port"); bind: setSvc + "/Port"; decimals: 0; unit: ""; min: 1; max: 65535 }
-        MbItemNumeric { description: qsTr("Unit ID"); bind: setSvc + "/UnitId"; decimals: 0; unit: ""; min: 0; max: 255 }
+        // --- Settings (editable where supported) ---
+        MbSwitch { name: qsTr("Enabled"); bind: Utils.path(setSvc, "/Enabled") }
+        MbEditBoxIp {
+            description: qsTr("IP address")
+            show: item.valid
+            item: VBusItem { bind: Utils.path(setSvc, "/IpAddress") }
+        }
+        MbSpinBox {
+            description: qsTr("Port")
+            show: item.valid
+            item {
+                bind: Utils.path(setSvc, "/Port")
+                decimals: 0
+                step: 1
+            }
+        }
+        MbSpinBox {
+            description: qsTr("Unit ID")
+            show: item.valid
+            item {
+                bind: Utils.path(setSvc, "/UnitId")
+                decimals: 0
+                step: 1
+            }
+        }
 
         // --- Status ---
         MbItemValue { description: qsTr("Status"); item: VBusItem { bind: svc + "/Status" } }
