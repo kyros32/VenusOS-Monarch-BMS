@@ -29,6 +29,11 @@ PRODUCT_ID = 0xB090
 UPDATE_INTERVAL_SECONDS = 2
 DEFAULT_DEVICE_INSTANCE = 41
 
+# Block read: single request for registers 0..36 (1-based 1..37). Monarch BMS may close
+# connection after each request; one block read avoids multiple round-trips.
+REGISTER_BLOCK_START = 0  # 0-based
+REGISTER_BLOCK_COUNT = 37
+
 # Per-field Modbus register map (address=1-based Modbus register, type=uint16|uint32|float32).
 # Alarm values: 0=OK, 1=Warning, 2=Alarm. Adjust addresses to match your Monarch BMS protocol.
 REGISTER_MAP = {
@@ -220,15 +225,6 @@ class VenusOsMonarchBmsService:
             )
         return self._modbus_client
 
-    def _read_input(self, addr_1based, count):
-        """Read input registers. addr_1based=1 means Modbus register 40001."""
-        client = self._get_client()
-        start = addr_1based - 1  # pymodbus uses 0-based
-        try:
-            return client.read_input_registers(start, count, slave=int(self._settings["unit_id"]))
-        except TypeError:
-            return client.read_input_registers(start, count, unit=int(self._settings["unit_id"]))
-
     def _read_data(self) -> Optional[Dict]:
         if int(self._settings["enabled"]) == 0:
             self._set_status(0, "Disabled")
@@ -242,15 +238,38 @@ class VenusOsMonarchBmsService:
             self._set_status(2, "Connection failed", self._last_error)
             return None
 
+        # Single block read: avoids connection drops when BMS closes after each request
+        unit_id = int(self._settings["unit_id"])
+        try:
+            resp = client.read_input_registers(
+                REGISTER_BLOCK_START, REGISTER_BLOCK_COUNT, slave=unit_id
+            )
+        except TypeError:
+            resp = client.read_input_registers(
+                REGISTER_BLOCK_START, count=REGISTER_BLOCK_COUNT, slave=unit_id
+            )
+
+        client.close()
+        self._modbus_client = None
+
+        if resp.isError():
+            self._last_error = f"Read error: {resp}"
+            self._set_status(2, "Read failed", self._last_error)
+            return None
+
+        regs = resp.registers
+        if len(regs) < REGISTER_BLOCK_COUNT:
+            self._last_error = f"Short read: got {len(regs)}, need {REGISTER_BLOCK_COUNT}"
+            self._set_status(2, "Read failed", self._last_error)
+            return None
+
         data = {}
-        for path, (addr, dtype) in REGISTER_MAP.items():
+        for path, (addr_1based, dtype) in REGISTER_MAP.items():
+            idx = addr_1based - 1
             count = 2 if dtype in ("uint32", "float32") else 1
-            resp = self._read_input(addr, count)
-            if resp.isError():
-                self._last_error = f"Read error at {path} (reg {addr}): {resp}"
-                self._set_status(2, "Read failed", self._last_error)
-                return None
-            val = _decode_regs(resp.registers, dtype)
+            if idx + count > len(regs):
+                continue
+            val = _decode_regs(regs[idx : idx + count], dtype)
             if val is not None:
                 if dtype in ("uint16", "uint32"):
                     if path in ("/Serial", "/HardwareVersion", "/FirmwareVersion"):
