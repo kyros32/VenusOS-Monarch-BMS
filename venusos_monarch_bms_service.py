@@ -12,6 +12,7 @@ if VELIB_PATH not in sys.path:
 
 from gi.repository import GLib
 from dbus.mainloop.glib import DBusGMainLoop
+import dbus
 from vedbus import VeDbusService
 from settingsdevice import SettingsDevice
 
@@ -45,6 +46,7 @@ def _uint32_be(regs, index):
 class VenusOsMonarchBmsService:
     def __init__(self):
         DBusGMainLoop(set_as_default=True)
+        bus = dbus.SystemBus()
 
         self._service = VeDbusService(SERVICE_NAME, register=False)
         self._modbus_client: Optional[ModbusTcpClient] = None
@@ -53,7 +55,7 @@ class VenusOsMonarchBmsService:
 
         # Persistent settings in com.victronenergy.settings
         self._settings = SettingsDevice(
-            bus=None,
+            bus=bus,
             supportedSettings={
                 "ip_address": ["/Settings/VenusOsMonarchBms/IpAddress", "192.168.0.20", 0, 0],
                 "port": ["/Settings/VenusOsMonarchBms/Port", 502, 1, 65535],

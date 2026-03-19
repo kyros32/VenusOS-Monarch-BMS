@@ -8,7 +8,8 @@ MbPage {
     property string svc: "com.victronenergy.battery.monarch"
 
     // Pre-declare bindings for stability (mirrors SolarEdge example style).
-    VBusItem { id: enabledItem; bind: svc + "/Settings/Enabled" }
+    // Enable toggle binds to Settings service (writable); battery service mirrors it read-only.
+    VBusItem { id: enabledItem; bind: "com.victronenergy.settings/Settings/VenusOsMonarchBms/Enabled" }
     VBusItem { id: statusItem; bind: svc + "/Status" }
     VBusItem { id: lastErrorItem; bind: svc + "/Status/LastError" }
     VBusItem { id: connectedItem; bind: svc + "/Connected" }
@@ -93,7 +94,7 @@ MbPage {
 
         MbSwitch {
             name: qsTr("Enable Monarch BMS Service")
-            bind: svc + "/Settings/Enabled"
+            bind: "com.victronenergy.settings/Settings/VenusOsMonarchBms/Enabled"
         }
 
         // For now these are read-only to avoid UI widget type issues.
