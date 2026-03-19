@@ -34,6 +34,7 @@ The service runs as a runit daemon, polls the BMS via Modbus TCP, and publishes 
 ```
 
 - **Read-only:** No Modbus writes; only input registers are read.
+- **Block read:** One Modbus request fetches all registers (1–37) per poll. The Monarch BMS may close the connection after each response; a single block read avoids multiple round-trips.
 - **Per-field mapping:** Each DBus path has its own Modbus register(s).
 - **Plausibility checks:** Voltage, current, SOC, temperature are validated before publishing.
 
@@ -187,11 +188,12 @@ The Monarch BMS page shows:
 
 - Venus (einstein) does not provide `MbItemEdit` or `MbItemNumeric`. IP uses `MbEditBoxIp`, Port and Unit ID use `MbSpinBox` (all editable).
 
-### No data / Connection failed
+### No data / Connection failed / "Connection unexpectedly closed"
 
 - Verify BMS IP, port, and unit ID
 - Check network: `ping <BMS_IP>`
 - Run manually: `cd /data/VenusOS-Monarch-BMS && /usr/bin/python3 venusos_monarch_bms_service.py`
+- The service uses a single block read per poll; if the BMS closes the connection after each request, this avoids multiple round-trips.
 
 ### Wrong values
 
@@ -217,4 +219,6 @@ Stop with Ctrl+C.
 
 ## Version History
 
+- **v1.1.3** – Block read for all Modbus registers; fixes "Connection unexpectedly closed" when BMS closes after each request
+- **v1.1.2** – Editable IP (MbEditBoxIp), Port and Unit ID (MbSpinBox)
 - **v1.1.0** – Full register map (temp, alarms, TimeToGo, cells), compact QML, detailed README
