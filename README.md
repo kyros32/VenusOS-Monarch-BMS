@@ -1,117 +1,75 @@
-# 🚀 Deploying Monarch BMS Modbus to DBus Bridge on Victron Venus OS
+# Monarch BMS DBus Service (VenusOS)
 
-This script reads Modbus values from a Monarch BMS over TCP and publishes them to DBus as a custom battery service:
+This project publishes Monarch BMS data from Modbus TCP to:
 
 `com.victronenergy.battery.monarch`
 
-✅ Visible in GX UI
-✅ Auto-starts at boot
-✅ **Survives firmware updates**
-✅ No external dependencies besides normal Venus tools
+It is structured for SetupHelper / kwindrem Package Manager style deployment:
 
-## 📦 Installation (Persistent & Survives Updates)
+- `setup` install/uninstall hook
+- `service/run` runit service entrypoint
+- `qml/PageMonarchBms.qml` settings + status page
+- `version` package version
+- `venusos_monarch_bms_service.py` driver daemon
 
-SSH into your Victron Cerbo GX / Venus device and follow these steps:
+## Why the old script could destabilize BMS behavior
 
-**1. Create a persistent directory in `/data`**
-The `/data` partition is the only one that survives firmware updates.
+The original `monarch_bms.py` had multiple high-risk behaviors:
 
-```bash
-mkdir -p /data/monarch_bms
-```
+- It pushed hardcoded placeholder battery values (`/Soc`, voltage, current) when live values were not decoded.
+- It published partially decoded blocks as authoritative limits, with no plausibility checks.
+- It had fixed IP/port/device-id in code, so field configuration changes required code edits/restarts.
+- It lacked a proper package-managed service lifecycle, so startup/recovery could be inconsistent.
 
-**2. Download the script into the new directory**
+This rewrite is read-only on Modbus, removes fake live values, and adds bounded runtime settings.
 
-```bash
-wget -O /data/monarch_bms/monarch_bms.py https://github.com/kyros32/DBus_client_monarch/monarch_bms.py
-```
+## Install with Package Manager (SetupHelper)
 
-*(Remember to update this file with the final version containing the `sys.path` fix).*
+In kwindrem Package Manager add:
 
-**3. Make the script executable**
+- **Package name:** `venusos-monarch-bms`
+- **GitHub user:** `<your github user>`
+- **GitHub branch/tag:** `main`
 
-```bash
-chmod +x /data/monarch_bms/monarch_bms.py
-```
+Then **Download** and **Install**.
 
-**4. Create/edit `/data/rc.local` to auto-start the script**
-This file is also persistent and is executed at the end of every boot sequence.
+## Manual install (SSH)
 
 ```bash
-nano /data/rc.local
+rm -rf /data/venusos-monarch-bms
+mkdir -p /data/venusos-monarch-bms
+wget -O - https://github.com/<your user>/venusos-monarch-bms/archive/refs/heads/main.tar.gz | tar -xzf - -C /data/venusos-monarch-bms --strip-components=1
+chmod +x /data/venusos-monarch-bms/setup
+chmod +x /data/venusos-monarch-bms/service/run
+bash -x /data/venusos-monarch-bms/setup install
 ```
 
-**5. Add the following lines**
-This will re-create the symbolic link on every boot, then run the script from the location Venus OS expects.
+## QML Settings Page
 
-```bash
-#!/bin/sh
-# Start Monarch BMS driver
+`qml/PageMonarchBms.qml` is included and reads/writes:
 
-# Create symbolic link from the non-persistent location to our persistent script
-# (The /opt/victronenergy/dbus-modbus-client/ directory is assumed to exist)
-ln -sfn /data/monarch_bms/monarch_bms.py /opt/victronenergy/dbus-modbus-client/monarch_bms.py
+- `/Settings/IpAddress`
+- `/Settings/Port`
+- `/Settings/UnitId`
+- `/Settings/Enabled`
 
-# Run the script from the symlink location
-/usr/bin/python3 /opt/victronenergy/dbus-modbus-client/monarch_bms.py > /dev/null 2>&1 &
-exit 0
-```
+And shows runtime state and key values:
 
-**6. Make `rc.local` executable**
+- `/Status`, `/Status/LastError`, `/Connected`
+- `/Status/Registers` (documents active Modbus register block)
+- `/Dc/0/Voltage`, `/Dc/0/Current`, `/Soc`
+- `/Info/MaxChargeCurrent`, `/Info/MaxDischargeCurrent`, `/Info/MaxChargeVoltage`
 
-```bash
-chmod +x /data/rc.local
-```
+The current read target is:
 
-**7. Reboot the device**
-The script will now start automatically after every boot.
+- Modbus TCP endpoint from settings: `/Settings/IpAddress` + `/Settings/Port`
+- Slave/device id from settings: `/Settings/UnitId`
+- Register block: Input Registers `1` count `30`
 
-```bash
-reboot
-```
+## Recommended rename
 
------
+To align with Venus package naming and future maintenance:
 
-## 🧪 Manual Testing (Optional)
-
-If you want to test before rebooting, you must **first run the symlink command** from `rc.local`:
-
-```bash
-ln -sfn /data/monarch_bms/monarch_bms.py /opt/victronenergy/dbus-modbus-client/monarch_bms.py
-```
-
-Now you can test by running from the **`/opt` path**:
-
-```bash
-/usr/bin/python3 /opt/victronenergy/dbus-modbus-client/monarch_bms.py
-```
-
-You should see the dbus service appear on `dbus-spy`.
-
------
-
-## ✅ Verification (After Reboot)
-
-Check that the process is running. Note the path will be the one in `/opt`.
-
-```bash
-pgrep -f /opt/victronenergy/dbus-modbus-client/monarch_bms.py
-```
-
-Check if the dbus service is registered:
-
-```bash
-dbus-spy
-```
-
-✅ If detected → BMS data is successfully published to Venus OS
-
------
-
-## 🛑 Stopping the Service
-
-This will stop the currently running process. It will restart automatically on the next reboot.
-
-```bash
-pkill -f /opt/victronenergy/dbus-modbus-client/monarch_bms.py
-```
+- Repository: `venusos-monarch-bms`
+- Service package label: `VenusOS-Monarch-BMS`
+- DBus service name: keep `com.victronenergy.battery.monarch` for continuity unless you need a clean break.

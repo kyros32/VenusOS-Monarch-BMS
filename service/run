@@ -1,0 +1,3 @@
+#!/bin/sh
+exec 2>&1
+exec /usr/bin/python3 /data/venusos-monarch-bms/venusos_monarch_bms_service.py
