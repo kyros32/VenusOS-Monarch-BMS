@@ -175,14 +175,17 @@ VenusOS-Monarch-BMS/
 
 ## QML Page Layout
 
-The Monarch BMS page shows:
+**Settings → Monarch BMS** (PageMonarchBms): Monarch-specific configuration only.
+- Enabled, IP address, Port, Unit ID
+- Status, Connected, Last Error, Connection (Modbus TCP IP:port unit)
 
-- **Settings:** Enabled (toggle), IP address (MbEditBoxIp), Port and Unit ID (MbSpinBox)
-- **Status:** Status, Connected, Last Error
-- **Battery line:** Voltage (V), Current (A), Power (W), SOC, Temperature, Time to Go
-- **Limits:** Max charge/discharge current (A), max charge voltage, low voltage, charge request
-- **Details:** Nr. of cells, installed capacity (Ah), available capacity (Ah), state of health (%), system switch, Serial, HW/FW version
-- **Alarms:** Alarm state, active alarms, Low/High voltage, Low/High SOC, High/Low temp, Low/High charge temp, Cell imbalance, Internal failure
+**Devices → Monarch BMS** (standard Victron battery UI): When you tap the Monarch battery in Devices, Venus uses the standard battery page with:
+- Switch (Off/Standby/On from System/Switch), State (Running/Error)
+- Battery row (V, A, W), SOC, SOH, Temperature, Time-to-go
+- Parameters (CVL, CCL, DCL), Details (BatteryDetails: installed/available capacity, connection info; cell voltages/temps if available)
+- Alarms (MbItemAlarm), Device (Serial, HW, FW)
+
+The service publishes Victron-compatible paths (/Mode, /State, /Mgmt/Connection, BatteryDetails paths) so the standard UI works.
 
 ---
 

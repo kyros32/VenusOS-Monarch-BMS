@@ -118,7 +118,7 @@ class VenusOsMonarchBmsService:
     def _setup_paths(self):
         self._service.add_path("/Mgmt/ProcessName", __file__)
         self._service.add_path("/Mgmt/ProcessVersion", "1.2.0")
-        self._service.add_path("/Mgmt/Connection", "ModbusTCP")
+        self._service.add_path("/Mgmt/Connection", "Modbus TCP")
         self._service.add_path("/DeviceInstance", int(self._settings["device_instance"]))
         self._service.add_path("/ProductId", PRODUCT_ID)
         self._service.add_path("/ProductName", PRODUCT_NAME)
@@ -154,8 +154,9 @@ class VenusOsMonarchBmsService:
             onchangecallback=self._on_dbus_setting_changed,
         )
 
-        # Diagnostics/state for GUI
-        self._service.add_path("/State", 0)  # 0=idle/disconnected, 1=running, 2=error
+        # Victron battery UI: /State 9=Running, 10=Error; /Mode 4=Off, 3=On, 0xfc=Standby
+        self._service.add_path("/State", 0)
+        self._service.add_path("/Mode", 3)
         self._service.add_path("/Status", "Starting")
         self._service.add_path("/Status/LastError", "")
         self._service.add_path("/Status/LastUpdateTs", 0)
@@ -182,6 +183,16 @@ class VenusOsMonarchBmsService:
         self._service.add_path("/System/NrOfModulesOffline", 0)
         self._service.add_path("/System/NrOfModulesBlockingCharge", 0)
         self._service.add_path("/System/NrOfModulesBlockingDischarge", 0)
+        # BatteryDetails paths (Lynx-style); None = not from Monarch Modbus
+        self._service.add_path("/System/MinCellVoltage", None)
+        self._service.add_path("/System/MinVoltageCellId", None)
+        self._service.add_path("/System/MaxCellVoltage", None)
+        self._service.add_path("/System/MaxVoltageCellId", None)
+        self._service.add_path("/System/MinCellTemperature", None)
+        self._service.add_path("/System/MinTemperatureCellId", None)
+        self._service.add_path("/System/MaxCellTemperature", None)
+        self._service.add_path("/System/MaxTemperatureCellId", None)
+        self._service.add_path("/System/InstalledCapacity", None)
         self._service.add_path("/Io/AllowToCharge", 1)
         self._service.add_path("/Io/AllowToDischarge", 1)
         self._service.add_path("/Io/AllowToBalance", 0)
@@ -200,7 +211,9 @@ class VenusOsMonarchBmsService:
         self._service.add_path("/Alarms/Active", "")
 
     def _set_status(self, state: int, msg: str, err: str = ""):
-        self._service["/State"] = state
+        # Victron /State: 9=Running, 10=Error, 0=Initializing
+        victron_state = 9 if state == 1 else (10 if state == 2 else 0)
+        self._service["/State"] = victron_state
         self._service["/Status"] = msg
         self._service["/Status/LastError"] = err
 
@@ -337,6 +350,17 @@ class VenusOsMonarchBmsService:
         return data
 
     def _update(self):
+        # Always update connection info and mode (for Victron Details / Battery UI)
+        ip = str(self._settings["ip_address"])
+        port = int(self._settings["port"])
+        unit = int(self._settings["unit_id"])
+        self._service["/Mgmt/Connection"] = f"Modbus TCP {ip}:{port} (unit {unit})"
+        try:
+            sw = int(self._service["/System/Switch"] or 1)
+        except (KeyError, TypeError):
+            sw = 1
+        self._service["/Mode"] = 4 if sw == 0 else 3
+
         try:
             data = self._read_data()
             if data is None:
@@ -354,6 +378,9 @@ class VenusOsMonarchBmsService:
             cap = self._service["/Info/AvailableCapacity"] or self._service["/Info/InstalledCapacity"]
             if cap is not None:
                 self._service["/Capacity"] = round(float(cap), 2)
+            inst = self._service["/Info/InstalledCapacity"]
+            if inst is not None:
+                self._service["/System/InstalledCapacity"] = round(float(inst), 2)
 
             self._service["/Connected"] = 1
             charge_request = int(self._service["/Info/ChargeRequest"] or 0)
