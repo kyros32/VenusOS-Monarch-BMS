@@ -1,46 +1,49 @@
 #!/bin/bash
-set -e
+packageLogFile="/var/log/VenusOSMonarchBMS/current"
 
-PKG_NAME="VenusOS-Monarch-BMS"
-PKG_DIR="/data/${PKG_NAME}"
-SERVICE_NAME="dbus-monarch-bms"
-SERVICE_LINK="/service/${SERVICE_NAME}"
-GUI_QML_DIR="/data/apps/${PKG_NAME}/qml"
-QML_DST="/data/apps/${PKG_NAME}/qml/PageMonarchBms.qml"
+# Source SetupHelper resources
+source "/data/SetupHelper/HelperResources/IncludeHelpers"
 
-install_pkg() {
-    mkdir -p "${PKG_DIR}"
-    mkdir -p "${GUI_QML_DIR}"
+packageAction() {
+    case $1 in
+        install|INSTALL)
+            logMessage "Installing VenusOS Monarch BMS Service..."
+            installService $packageName
 
-    chmod +x "${PKG_DIR}/service/run"
-    ln -sfn "${PKG_DIR}/service" "${SERVICE_LINK}"
+            logMessage "Patching QML menu UI..."
+            cp "$scriptDir/qml/PageMonarchBms.qml" "$qmlDir/"
 
-    # Keep QML in a known persistent location.
-    cp -f "${PKG_DIR}/qml/PageMonarchBms.qml" "${QML_DST}"
+            # Remove any previous failed attempts using our unique tag
+            sed -i '/VenusOSMonarchBMS/d' "$qmlDir/PageSettings.qml"
 
-    echo "${PKG_NAME} installed. Service link: ${SERVICE_LINK}"
+            # Inject our menu item (at the end of VisibleItemModel)
+            sed -i '/model: VisibleItemModel {/a \ \ \ \ \ \ \ \ MbSubMenu { description: qsTr("Monarch BMS"); subpage: Component { PageMonarchBms {} } } \/\/VenusOSMonarchBMS' "$qmlDir/PageSettings.qml"
+
+            restartGui=true
+            ;;
+
+        uninstall|UNINSTALL)
+            logMessage "Uninstalling VenusOS Monarch BMS..."
+            removeService $packageName
+
+            sed -i '/VenusOSMonarchBMS/d' "$qmlDir/PageSettings.qml"
+            rm -f "$qmlDir/PageMonarchBms.qml"
+
+            # Remove persisted package data
+            rm -rf "/data/$packageName" "/data/setupOptions/$packageName"
+
+            # We can, however, safely delete our own custom log folder
+            rm -rf "$(dirname "$packageLogFile")"
+
+            restartGui=true
+            ;;
+    esac
 }
 
-remove_pkg() {
-    if [ -L "${SERVICE_LINK}" ] || [ -e "${SERVICE_LINK}" ]; then
-        rm -f "${SERVICE_LINK}"
-    fi
-    echo "${PKG_NAME} removed."
-}
+if [ $scriptAction == 'NONE' ] ; then
+    standardActionPrompt
+else
+    packageAction $scriptAction
+fi
 
-case "$1" in
-    install)
-        install_pkg
-        ;;
-    uninstall|remove)
-        remove_pkg
-        ;;
-    restart)
-        remove_pkg
-        install_pkg
-        ;;
-    *)
-        echo "Usage: $0 {install|uninstall|remove|restart}"
-        exit 1
-        ;;
-esac
+endScript
