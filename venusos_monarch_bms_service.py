@@ -234,17 +234,20 @@ class VenusOsMonarchBmsService:
         if not client.connect():
             return None
         unit_id = int(self._settings["unit_id"])
+        # pymodbus 2.x (Venus) uses unit=; some variants use slave= (match SolarEdge pattern)
         try:
             if use_holding:
-                try:
-                    resp = client.read_holding_registers(start, count, slave=unit_id)
-                except TypeError:
-                    resp = client.read_holding_registers(start, count=count, slave=unit_id)
+                resp = client.read_holding_registers(start, count=count, unit=unit_id)
             else:
-                try:
-                    resp = client.read_input_registers(start, count, slave=unit_id)
-                except TypeError:
+                resp = client.read_input_registers(start, count=count, unit=unit_id)
+        except TypeError:
+            try:
+                if use_holding:
+                    resp = client.read_holding_registers(start, count=count, slave=unit_id)
+                else:
                     resp = client.read_input_registers(start, count=count, slave=unit_id)
+            except Exception:
+                return None
         except Exception:
             return None
         self._close_client()
